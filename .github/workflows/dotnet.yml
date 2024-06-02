@@ -1,10 +1,11 @@
-name: dotnet
+name: dotnet build & publish
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
+  workflow_dispatch:
 
 concurrency:
   group: dotnet-${{ github.ref }}-1
@@ -30,3 +31,13 @@ jobs:
       run: dotnet build --no-restore -c Release
     - name: Test
       run: dotnet test -c Release --collect:"XPlat Code Coverage" --no-build --verbosity normal /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+    - name: Publish
+      run: dotnet publish --configuration Release --output ./publish
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+      with:
+        app-name: 'osobytesblog'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: './publish'
